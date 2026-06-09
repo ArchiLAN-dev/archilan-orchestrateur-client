@@ -19,30 +19,48 @@ final class SessionsClient
     {
     }
 
-    public function generate(string $sessionId, string $adminPassword, ?string $seed = null): void
+    /**
+     * @param array<string, mixed> $generationOptions optional generator options forwarded as-is
+     *                                                 (e.g. plandoOptions, race, spoiler)
+     */
+    public function generate(string $sessionId, string $adminPassword, ?string $seed = null, array $generationOptions = []): void
     {
         $body = ['adminPassword' => $adminPassword];
         if (null !== $seed) {
             $body['seed'] = $seed;
         }
+        foreach ($generationOptions as $key => $value) {
+            $body[$key] = $value;
+        }
         $this->transport->postVoid("/sessions/{$sessionId}/generate", $body);
     }
 
-    public function launch(string $sessionId, string $adminPassword, ?string $serverPassword = null): void
+    /**
+     * @param array<string, scalar> $serverOptions optional server_options forwarded as-is
+     */
+    public function launch(string $sessionId, string $adminPassword, ?string $serverPassword = null, array $serverOptions = []): void
     {
         $body = ['adminPassword' => $adminPassword];
         if (null !== $serverPassword) {
             $body['serverPassword'] = $serverPassword;
         }
+        foreach ($serverOptions as $key => $value) {
+            $body[$key] = $value;
+        }
         $this->transport->postVoid("/sessions/{$sessionId}/launch", $body);
     }
 
+    /**
+     * @param array<string, scalar> $serverOptions optional server_options; appended as string
+     *                                             multipart fields (the launch-from-file form is string-only)
+     */
     public function launchFromFile(
         string $sessionId,
         string $fileContents,
         string $filename,
         string $adminPassword,
         ?string $serverPassword = null,
+        array $serverOptions = [],
     ): void {
         $fields = [
             'file' => new DataPart($fileContents, $filename, 'application/octet-stream'),
@@ -51,10 +69,22 @@ final class SessionsClient
         if (null !== $serverPassword) {
             $fields['serverPassword'] = $serverPassword;
         }
+        foreach ($serverOptions as $key => $value) {
+            $fields[$key] = self::toFormValue($value);
+        }
         $this->transport->postMultipartVoid(
             "/sessions/{$sessionId}/launch-from-file",
             new FormDataPart($fields),
         );
+    }
+
+    private static function toFormValue(string|int|float|bool $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        return (string) $value;
     }
 
     public function stop(string $sessionId): void
