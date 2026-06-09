@@ -76,6 +76,72 @@ final class SessionsClientTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    public function testGenerate_forwardsGenerationOptions(): void
+    {
+        $called = false;
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$called): MockResponse {
+            $called = true;
+            $body = json_decode($options['body'] ?? '{}', true);
+            $this->assertIsArray($body);
+            $this->assertSame(['bosses', 'items'], $body['plandoOptions'] ?? null);
+            $this->assertTrue($body['race'] ?? null);
+            $this->assertSame(0, $body['spoiler'] ?? null);
+
+            return new MockResponse('', ['http_code' => 202]);
+        });
+        $client = new SessionsClient(new HttpTransport($mock, 'http://localhost:8000', 'key'));
+        $client->generate('abc', 'adminpass', null, ['plandoOptions' => ['bosses', 'items'], 'race' => true, 'spoiler' => 0]);
+        $this->assertTrue($called);
+    }
+
+    public function testLaunch_forwardsServerOptions(): void
+    {
+        $called = false;
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$called): MockResponse {
+            $called = true;
+            $body = json_decode($options['body'] ?? '{}', true);
+            $this->assertIsArray($body);
+            $this->assertSame('disabled', $body['releaseMode'] ?? null);
+            $this->assertSame(25, $body['hintCost'] ?? null);
+            $this->assertFalse($body['disableItemCheat'] ?? null);
+
+            return new MockResponse('', ['http_code' => 202]);
+        });
+        $client = new SessionsClient(new HttpTransport($mock, 'http://localhost:8000', 'key'));
+        $client->launch('abc', 'adminpass', 'joinpw', ['releaseMode' => 'disabled', 'hintCost' => 25, 'disableItemCheat' => false]);
+        $this->assertTrue($called);
+    }
+
+    public function testLaunchFromFile_forwardsServerOptionsAsStrings(): void
+    {
+        $body = '';
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$body): MockResponse {
+            $raw = $options['body'] ?? '';
+            if (is_iterable($raw)) {
+                foreach ($raw as $chunk) {
+                    $body .= $chunk;
+                }
+            } else {
+                $body .= (string) $raw;
+            }
+
+            return new MockResponse('', ['http_code' => 202]);
+        });
+        $client = new SessionsClient(new HttpTransport($mock, 'http://localhost:8000', 'key'));
+        $client->launchFromFile('abc', 'data', 'seed.zip', 'adminpass', 'joinpw', [
+            'releaseMode' => 'goal',
+            'disableItemCheat' => true,
+            'compatibility' => 0,
+        ]);
+
+        // Multipart form fields are serialised as strings (bool → "true").
+        $this->assertStringContainsString('name="releaseMode"', $body);
+        $this->assertStringContainsString('goal', $body);
+        $this->assertStringContainsString('name="disableItemCheat"', $body);
+        $this->assertStringContainsString('true', $body);
+        $this->assertStringContainsString('name="compatibility"', $body);
+    }
+
     public function testStop_void(): void
     {
         $client = $this->client(new MockResponse('', ['http_code' => 204]));
