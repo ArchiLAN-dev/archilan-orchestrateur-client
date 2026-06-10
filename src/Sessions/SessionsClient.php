@@ -97,6 +97,15 @@ final class SessionsClient
         $this->transport->postVoid("/sessions/{$sessionId}/restart");
     }
 
+    /**
+     * Resume a session that went idle via Archipelago's auto_shutdown: the orchestrateur
+     * relaunches the AP server on the retained session volume so the latest save is reloaded.
+     */
+    public function relaunchFromSave(string $sessionId): void
+    {
+        $this->transport->postVoid("/sessions/{$sessionId}/relaunch-from-save");
+    }
+
     public function get(string $sessionId): SessionResponse
     {
         return SessionResponse::fromArray($this->transport->getJson("/sessions/{$sessionId}"));
