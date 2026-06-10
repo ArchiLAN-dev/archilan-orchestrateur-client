@@ -156,6 +156,14 @@ final class SessionsClientTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    public function testRelaunchFromSave_void(): void
+    {
+        $response = new MockResponse('', ['http_code' => 202]);
+        $client = $this->client($response);
+        $client->relaunchFromSave('abc');
+        $this->assertSame('http://localhost:8000/sessions/abc/relaunch-from-save', $response->getRequestUrl());
+    }
+
     public function testDelete_void(): void
     {
         $client = $this->client(new MockResponse('', ['http_code' => 204]));
