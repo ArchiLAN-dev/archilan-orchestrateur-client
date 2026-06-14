@@ -205,7 +205,7 @@ final class ApworldsClientTest extends TestCase
 
     public function testUpload_choiceOption_hasNoRangeFields(): void
     {
-        // A ChoiceTemplateOption structurally cannot have range fields — verified by instanceof
+        // A ChoiceTemplateOption structurally cannot have range fields - verified by instanceof
         $body = json_encode(['hash' => 'abc', 'options' => [
             ['key' => 'some_option', 'description' => 'Desc.', 'type' => 'choice',
              'defaultValue' => 'foo', 'validValues' => ['foo', 'bar']],

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Sessions\Yaml\Option;
 
 /**
- * Represents an OptionList, OptionSet, or ItemSet option — and universal list options
+ * Represents an OptionList, OptionSet, or ItemSet option - and universal list options
  * such as local_items, non_local_items, start_hints, exclude_locations, etc.
  */
 final readonly class ItemListOption implements OptionValue

@@ -16,7 +16,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * @internal
  *
  * Single HTTP plumbing layer: injects auth, maps errors to exceptions, decodes responses.
- * Sub-clients call this class exclusively — they contain zero raw HTTP logic.
+ * Sub-clients call this class exclusively - they contain zero raw HTTP logic.
  *
  * Adding a new endpoint group:
  *   1. Create src/Foo/FooClient.php with __construct(private readonly HttpTransport $transport)

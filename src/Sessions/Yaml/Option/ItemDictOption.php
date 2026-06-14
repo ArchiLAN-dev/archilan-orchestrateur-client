@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Sessions\Yaml\Option;
 
 /**
- * Represents an OptionCounter, ItemDict, or OptionDict option — and universal dict options
+ * Represents an OptionCounter, ItemDict, or OptionDict option - and universal dict options
  * such as start_inventory (item name → quantity).
  */
 final readonly class ItemDictOption implements OptionValue
