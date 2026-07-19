@@ -224,4 +224,29 @@ final class ApworldsClientTest extends TestCase
 
         $this->assertSame($yaml, $result);
     }
+
+    public function testGetLocations_returnsList(): void
+    {
+        $body = json_encode(['locations' => ['Boss Reward', 'Chest 1', 'Chest 2']]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $this->assertSame(['Boss Reward', 'Chest 1', 'Chest 2'], $client->getLocations('deadbeef'));
+    }
+
+    public function testGetLocations_emptyWhenNotIntrospected(): void
+    {
+        // A sidecar with only option types (no "locations" key) yields an empty list.
+        $body = json_encode(['options' => [['key' => 'foo', 'type' => 'choice']]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $this->assertSame([], $client->getLocations('deadbeef'));
+    }
+
+    public function testGetLocations_filtersNonStringEntries(): void
+    {
+        $body = json_encode(['locations' => ['A', 123, null, 'B', ['nested']]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $this->assertSame(['A', 'B'], $client->getLocations('deadbeef'));
+    }
 }

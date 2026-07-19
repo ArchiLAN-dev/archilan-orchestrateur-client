@@ -57,6 +57,29 @@ final class ApworldsClient implements \IteratorAggregate
     }
 
     /**
+     * Static location names introspected from the apworld's World class.
+     *
+     * The full nameable-location set (location_name_to_id keys) these YAML options match against;
+     * empty until the apworld has been introspected. It is the static list - options-dependent checks
+     * are not reflected, so consumers use it as a free-text suggestion hint, not a source of truth.
+     *
+     * @return list<string>
+     */
+    public function getLocations(string $hash): array
+    {
+        $data = $this->transport->getJson("/apworlds/{$hash}/locations");
+        $locations = [];
+        $raw = $data['locations'] ?? null;
+        foreach (is_array($raw) ? $raw : [] as $item) {
+            if (is_string($item)) {
+                $locations[] = $item;
+            }
+        }
+
+        return $locations;
+    }
+
+    /**
      * @return ApworldEntry[]
      */
     public function list(): array
