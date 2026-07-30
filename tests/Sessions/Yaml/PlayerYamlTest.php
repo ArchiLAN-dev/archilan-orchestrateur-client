@@ -96,6 +96,41 @@ final class PlayerYamlTest extends TestCase
         $this->assertSame('Player One', $parsed['name']);
     }
 
+    public function testToYamlString_numericGameName_sectionKeyStaysString(): void
+    {
+        $yaml = new PlayerYaml(
+            name: 'masterkafey',
+            game: '2048',
+            options: [new ChoiceOption('goal', 'merge_2048')],
+        );
+
+        $yamlString = $yaml->toYamlString();
+
+        $this->assertStringContainsString("game: '2048'", $yamlString);
+        $this->assertStringContainsString("'2048':", $yamlString);
+        $this->assertDoesNotMatchRegularExpression('/^2048:/m', $yamlString);
+    }
+
+    public function testToYamlString_numericGameName_withoutOptions_isValidYaml(): void
+    {
+        $yaml = new PlayerYaml(name: 'Jean', game: '2048');
+        $parsed = Yaml::parse($yaml->toYamlString());
+
+        $this->assertIsArray($parsed);
+        $this->assertSame('2048', $parsed['game']);
+    }
+
+    public function testToYamlString_nonNumericGameName_sectionKeyUnquoted(): void
+    {
+        $yaml = new PlayerYaml(
+            name: 'Jean',
+            game: 'Timespinner',
+            options: [new ChoiceOption('accessibility', 'full')],
+        );
+
+        $this->assertStringContainsString("\nTimespinner:", $yaml->toYamlString());
+    }
+
     public function testRangeOption_randomString(): void
     {
         $option = new RangeOption('crystals_needed_for_ganon', 'random-low');
