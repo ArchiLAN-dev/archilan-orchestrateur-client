@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Apworlds;
 
 use Archilan\OrchestratorClient\Apworlds\Response\ApworldEntry;
+use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
 use Archilan\OrchestratorClient\Http\HttpTransport;
@@ -77,6 +78,34 @@ final class ApworldsClient implements \IteratorAggregate
         }
 
         return $locations;
+    }
+
+    /**
+     * Re-run the upload-time preflight test generation (story 9.38). The check is
+     * asynchronous on the orchestrator: the returned verdict is "pending"; poll list()
+     * for the final one.
+     */
+    public function runPreflight(string $hash): ApworldPreflight
+    {
+        return $this->preflightFromResponse($this->transport->postJson("/apworlds/{$hash}/preflight"));
+    }
+
+    /** Toggle the admin "force allow" override on a failed preflight verdict (story 9.38). */
+    public function overridePreflight(string $hash, bool $overridden): ApworldPreflight
+    {
+        return $this->preflightFromResponse(
+            $this->transport->postJson("/apworlds/{$hash}/preflight-override", ['overridden' => $overridden]),
+        );
+    }
+
+    /** @param array<string, mixed> $data */
+    private function preflightFromResponse(array $data): ApworldPreflight
+    {
+        $raw = $data['preflight'] ?? null;
+        /** @var array<string, mixed> $raw */
+        $raw = is_array($raw) ? $raw : [];
+
+        return ApworldPreflight::fromArray($raw);
     }
 
     /**
