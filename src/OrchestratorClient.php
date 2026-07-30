@@ -7,6 +7,7 @@ namespace Archilan\OrchestratorClient;
 use Archilan\OrchestratorClient\Apworlds\ApworldsClient;
 use Archilan\OrchestratorClient\Containers\ContainersClient;
 use Archilan\OrchestratorClient\Http\HttpTransport;
+use Archilan\OrchestratorClient\Preflight\PreflightClient;
 use Archilan\OrchestratorClient\Sessions\SessionsClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -16,6 +17,7 @@ final class OrchestratorClient
     private readonly SessionsClient $sessions;
     private readonly ContainersClient $containers;
     private readonly ApworldsClient $apworlds;
+    private readonly PreflightClient $preflight;
 
     public function __construct(
         string $baseUrl,
@@ -26,6 +28,7 @@ final class OrchestratorClient
         $this->sessions = new SessionsClient($this->transport);
         $this->containers = new ContainersClient($this->transport);
         $this->apworlds = new ApworldsClient($this->transport);
+        $this->preflight = new PreflightClient($this->transport);
     }
 
     public function sessions(): SessionsClient
@@ -41,5 +44,10 @@ final class OrchestratorClient
     public function apworlds(): ApworldsClient
     {
         return $this->apworlds;
+    }
+
+    public function preflight(): PreflightClient
+    {
+        return $this->preflight;
     }
 }
