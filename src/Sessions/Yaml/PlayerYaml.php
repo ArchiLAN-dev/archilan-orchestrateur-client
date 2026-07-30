@@ -22,7 +22,26 @@ final readonly class PlayerYaml
 
     public function toYamlString(): string
     {
-        return Yaml::dump($this->toArray(), 4, 2);
+        $yaml = Yaml::dump($this->toArray(), 4, 2);
+
+        // PHP coerces a canonical-integer string array key ("2048") to int, so Yaml::dump
+        // emits the game section key unquoted and the Archipelago generator parses it back
+        // as an int, which never matches the (string) `game:` value ("No game options for
+        // selected game found"). Re-quote the section key. Only the section key can match
+        // at column 0: option lines below it are indented.
+        if ((string) (int) $this->game === $this->game) {
+            $quoted = preg_replace(
+                '/^'.preg_quote($this->game, '/').':/m',
+                sprintf("'%s':", $this->game),
+                $yaml,
+                1,
+            );
+            if (null !== $quoted) {
+                $yaml = $quoted;
+            }
+        }
+
+        return $yaml;
     }
 
     /** @return array<string, mixed> */
