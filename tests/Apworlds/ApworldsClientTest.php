@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Tests\Apworlds;
 
 use Archilan\OrchestratorClient\Apworlds\ApworldsClient;
+use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\ChoiceTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\RangeTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
@@ -248,5 +249,60 @@ final class ApworldsClientTest extends TestCase
         $client = $this->client(new MockResponse($body, ['http_code' => 200]));
 
         $this->assertSame(['A', 'B'], $client->getLocations('deadbeef'));
+    }
+
+    public function testList_parsesPreflightVerdict(): void
+    {
+        $body = json_encode(['apworlds' => [
+            ['hash' => 'aaa', 'game' => 'Game A', 'preflight' => [
+                'status' => 'failed', 'error' => 'Exception: boom', 'checkedAt' => '2026-07-30T12:00:00Z', 'overridden' => true,
+            ]],
+            ['hash' => 'bbb', 'game' => 'Game B'],
+        ]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $entries = $client->list();
+
+        $this->assertCount(2, $entries);
+        $preflight = $entries[0]->preflight;
+        $this->assertNotNull($preflight);
+        $this->assertSame(ApworldPreflight::STATUS_FAILED, $preflight->status);
+        $this->assertSame('Exception: boom', $preflight->error);
+        $this->assertSame('2026-07-30T12:00:00Z', $preflight->checkedAt);
+        $this->assertTrue($preflight->overridden);
+        $this->assertFalse($preflight->blocksUsage());
+        $this->assertNull($entries[1]->preflight);
+    }
+
+    public function testBlocksUsage_onlyForFailedNonOverridden(): void
+    {
+        $this->assertTrue((new ApworldPreflight(status: ApworldPreflight::STATUS_FAILED))->blocksUsage());
+        $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_FAILED, overridden: true))->blocksUsage());
+        $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_PASSED))->blocksUsage());
+        $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_PENDING))->blocksUsage());
+        $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_SKIPPED))->blocksUsage());
+    }
+
+    public function testRunPreflight_returnsPendingVerdict(): void
+    {
+        $body = json_encode(['hash' => 'aaa', 'preflight' => ['status' => 'pending', 'overridden' => false]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 202]));
+
+        $verdict = $client->runPreflight('aaa');
+
+        $this->assertSame(ApworldPreflight::STATUS_PENDING, $verdict->status);
+    }
+
+    public function testOverridePreflight_returnsUpdatedVerdict(): void
+    {
+        $body = json_encode(['hash' => 'aaa', 'preflight' => [
+            'status' => 'failed', 'error' => 'Exception: boom', 'overridden' => true,
+        ]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $verdict = $client->overridePreflight('aaa', true);
+
+        $this->assertTrue($verdict->overridden);
+        $this->assertFalse($verdict->blocksUsage());
     }
 }

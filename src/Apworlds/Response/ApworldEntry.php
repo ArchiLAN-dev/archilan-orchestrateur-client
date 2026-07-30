@@ -11,6 +11,7 @@ final readonly class ApworldEntry
     public function __construct(
         public string $hash,
         public string $game,
+        public ?ApworldPreflight $preflight = null,
     ) {
     }
 
@@ -27,6 +28,14 @@ final readonly class ApworldEntry
             throw new OrchestratorException("Missing or invalid field 'game' in apworld list response");
         }
 
-        return new self(hash: $hash, game: $game);
+        $rawPreflight = $data['preflight'] ?? null;
+        /** @var array<string, mixed>|null $rawPreflight */
+        $rawPreflight = is_array($rawPreflight) ? $rawPreflight : null;
+
+        return new self(
+            hash: $hash,
+            game: $game,
+            preflight: null !== $rawPreflight ? ApworldPreflight::fromArray($rawPreflight) : null,
+        );
     }
 }
