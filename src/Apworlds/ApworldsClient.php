@@ -81,6 +81,30 @@ final class ApworldsClient implements \IteratorAggregate
     }
 
     /**
+     * Replace the YAML template stored next to the apworld (story 9.45). The upload
+     * preflight reads that file, so keeping it in sync with what the platform serves to
+     * players is what makes the verdict meaningful. Returns the stored template.
+     */
+    public function setYamlTemplate(string $hash, string $template): string
+    {
+        $data = $this->transport->putJson("/apworlds/{$hash}/yaml", ['template' => $template]);
+
+        return is_string($data['template'] ?? null) ? $data['template'] : $template;
+    }
+
+    /**
+     * Regenerate the template from the apworld already in storage (story 9.46): undoes an
+     * edit, and repairs a game whose template failed at upload. Throws when the world still
+     * cannot produce one - the stored template is then left untouched.
+     */
+    public function regenerateYamlTemplate(string $hash): string
+    {
+        $data = $this->transport->postJson("/apworlds/{$hash}/template");
+
+        return is_string($data['template'] ?? null) ? $data['template'] : '';
+    }
+
+    /**
      * Re-run the upload-time preflight test generation (story 9.38). The check is
      * asynchronous on the orchestrator: the returned verdict is "pending"; poll list()
      * for the final one.
