@@ -12,6 +12,7 @@ use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\TextTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\ToggleTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
+use Archilan\OrchestratorClient\Exception\OrchestratorException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -281,6 +282,40 @@ final class ApworldsClientTest extends TestCase
         $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_PASSED))->blocksUsage());
         $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_PENDING))->blocksUsage());
         $this->assertFalse((new ApworldPreflight(status: ApworldPreflight::STATUS_SKIPPED))->blocksUsage());
+    }
+
+    public function testSetYamlTemplate_returnsTheStoredTemplate(): void
+    {
+        $body = json_encode(['hash' => 'aaa', 'template' => "name: Player{number}\ngame: Atlyss\n"]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $stored = $client->setYamlTemplate('aaa', "name: Player{number}\ngame: Atlyss\n");
+
+        $this->assertSame("name: Player{number}\ngame: Atlyss\n", $stored);
+    }
+
+    public function testSetYamlTemplate_fallsBackToTheSentTemplate(): void
+    {
+        // Older orchestrator answering without echoing the template back.
+        $client = $this->client(new MockResponse(json_encode(['hash' => 'aaa']) ?: '', ['http_code' => 200]));
+
+        $this->assertSame('game: X', $client->setYamlTemplate('aaa', 'game: X'));
+    }
+
+    public function testRegenerateYamlTemplate_returnsTheFreshTemplate(): void
+    {
+        $body = json_encode(['hash' => 'aaa', 'template' => "game: Atlyss\nAtlyss: {}\n"]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $this->assertSame("game: Atlyss\nAtlyss: {}\n", $client->regenerateYamlTemplate('aaa'));
+    }
+
+    public function testRegenerateYamlTemplate_throwsWhenTheWorldCannotProduceOne(): void
+    {
+        $client = $this->client(new MockResponse(json_encode(['error' => 'regenerate template: boom']) ?: '', ['http_code' => 422]));
+
+        $this->expectException(OrchestratorException::class);
+        $client->regenerateYamlTemplate('aaa');
     }
 
     public function testRunPreflight_returnsPendingVerdict(): void

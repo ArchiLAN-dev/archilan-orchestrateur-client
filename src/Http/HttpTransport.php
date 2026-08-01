@@ -70,6 +70,29 @@ final class HttpTransport
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function putJson(string $path, mixed $body = []): array
+    {
+        try {
+            $response = $this->httpClient->request('PUT', $this->url($path), [
+                'json' => $body,
+                'headers' => ['Authorization' => 'Bearer '.$this->apiKey],
+            ]);
+            $status = $response->getStatusCode();
+            if ($status < 200 || $status >= 300) {
+                $this->mapError($status, $this->tryDecodeJson($response->getContent(false)));
+            }
+
+            return $this->decodeJson($response->getContent(false));
+        } catch (OrchestratorException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw new TransportException($e->getMessage(), $e);
+        }
+    }
+
     public function postMultipartVoid(string $path, FormDataPart $form): void
     {
         try {
