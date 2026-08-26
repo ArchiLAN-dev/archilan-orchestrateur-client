@@ -24,6 +24,9 @@ abstract readonly class TemplateOption
             'choice'  => ChoiceTemplateOption::fromData($key, $description, $data),
             'toggle'  => ToggleTemplateOption::fromData($key, $description, $data),
             'weights' => WeightsTemplateOption::fromData($key, $description, $data),
+            // An OptionDict looks exactly like a weighted option on the wire and is not one: its
+            // values are literal settings, not weights. Telling them apart is the whole point.
+            'dict'    => DictTemplateOption::fromData($key, $description, $data),
             default   => TextTemplateOption::fromData($key, $description, $data),
         };
     }

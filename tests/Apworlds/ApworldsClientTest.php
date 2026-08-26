@@ -7,6 +7,7 @@ namespace Archilan\OrchestratorClient\Tests\Apworlds;
 use Archilan\OrchestratorClient\Apworlds\ApworldsClient;
 use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\ChoiceTemplateOption;
+use Archilan\OrchestratorClient\Apworlds\Response\DictTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\RangeTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\TextTemplateOption;
@@ -51,6 +52,55 @@ final class ApworldsClientTest extends TestCase
         $this->assertSame(80, $opt->default);
         $this->assertSame(50, $opt->rangeMin);
         $this->assertSame(95, $opt->rangeMax);
+    }
+
+    /**
+     * An OptionDict is a mapping of named settings to literal values, and it looks exactly like a
+     * weighted option on the wire. Reading it as one coerces every value to an integer, which turned
+     * `default_player_name: player_name` into `default_player_name: 0` and crashed generation.
+     */
+    public function testUpload_dictOption(): void
+    {
+        $body = $this->uploadBody('d1c7', [
+            ['key' => 'game_options', 'description' => 'In-game settings.', 'type' => 'dict',
+             'defaultValue' => [
+                 'default_player_name' => 'player_name',
+                 'text_speed' => 'fast',
+                 'turbo' => true,
+                 'starter' => 4,
+             ],
+             'validKeys' => ['default_player_name', 'text_speed', 'turbo', 'starter', 7]],
+        ]);
+        $client = $this->client(new MockResponse($body, ['http_code' => 201]));
+        $result = $client->upload('binary-data', 'game.apworld');
+
+        $opt = $result->options[0];
+        $this->assertInstanceOf(DictTemplateOption::class, $opt);
+        $this->assertSame('game_options', $opt->key);
+        // Every literal survives with its own type - no weight coercion anywhere.
+        $this->assertSame([
+            'default_player_name' => 'player_name',
+            'text_speed' => 'fast',
+            'turbo' => true,
+            'starter' => 4,
+        ], $opt->defaults);
+        $this->assertSame(['default_player_name', 'text_speed', 'turbo', 'starter'], $opt->validKeys);
+    }
+
+    /** A sub-setting can itself be a block (Slay the Spire's `advanced_characters`). */
+    public function testUpload_dictOptionKeepsNestedBlocks(): void
+    {
+        $body = $this->uploadBody('d1c8', [
+            ['key' => 'advanced_characters', 'description' => 'Per-character settings.', 'type' => 'dict',
+             'defaultValue' => ['Ironclad' => ['ascension' => 3, 'enabled' => true]]],
+        ]);
+        $client = $this->client(new MockResponse($body, ['http_code' => 201]));
+
+        $opt = $client->upload('binary-data', 'game.apworld')->options[0];
+
+        $this->assertInstanceOf(DictTemplateOption::class, $opt);
+        $this->assertSame(['Ironclad' => ['ascension' => 3, 'enabled' => true]], $opt->defaults);
+        $this->assertSame([], $opt->validKeys);
     }
 
     public function testUpload_choiceOption(): void
