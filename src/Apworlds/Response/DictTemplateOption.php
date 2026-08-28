@@ -17,19 +17,26 @@ namespace Archilan\OrchestratorClient\Apworlds\Response;
  *
  * Sub-values are typed `mixed` on purpose: Slay the Spire's `advanced_characters` maps a character
  * name to a block of its own settings, so flattening them to scalars would lose the nesting.
+ *
+ * `$validKeys` and `$keys` are not two names for one thing: `$validKeys` holds the sub-setting
+ * NAMES, `$keys` holds the VALUES each of them accepts. A consumer that reads one as the other
+ * offers key names in a dropdown as though they were values.
  */
 final readonly class DictTemplateOption extends TemplateOption
 {
     /**
-     * @param array<string, mixed> $defaults  the sub-settings and their literal default values
-     * @param string[]             $validKeys the sub-settings the option accepts, when introspection
-     *                                        knows them; empty when it does not
+     * @param array<string, mixed>         $defaults  the sub-settings and their literal default values
+     * @param string[]                     $validKeys the sub-settings the option accepts, when
+     *                                                introspection knows them; empty when it does not
+     * @param array<string, DictSubOption> $keys      what each sub-setting accepts, for the ones whose
+     *                                                world declares a `schema`; empty for the rest
      */
     public function __construct(
         string $key,
         string $description,
         public array $defaults,
         public array $validKeys,
+        public array $keys = [],
     ) {
         parent::__construct($key, $description);
     }
@@ -51,6 +58,18 @@ final readonly class DictTemplateOption extends TemplateOption
             $validKeys = array_values(array_filter($data['validKeys'], 'is_string'));
         }
 
-        return new self($key, $description, $defaults, $validKeys);
+        $keys = [];
+        if (isset($data['keys']) && is_array($data['keys'])) {
+            foreach ($data['keys'] as $subKey => $sub) {
+                if (is_string($subKey) && is_array($sub)) {
+                    $parsed = DictSubOption::fromData($sub);
+                    if (null !== $parsed) {
+                        $keys[$subKey] = $parsed;
+                    }
+                }
+            }
+        }
+
+        return new self($key, $description, $defaults, $validKeys, $keys);
     }
 }
