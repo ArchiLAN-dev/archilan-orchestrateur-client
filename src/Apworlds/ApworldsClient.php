@@ -105,6 +105,22 @@ final class ApworldsClient implements \IteratorAggregate
     }
 
     /**
+     * Re-run option introspection on the apworld already in storage (story 9.53).
+     *
+     * Introspection otherwise runs exactly once, when the apworld is uploaded, so a world
+     * introspected by an older image keeps that answer for good - and the only way to refresh it
+     * was to re-upload the very bytes the server already holds.
+     *
+     * Throws when the world cannot be introspected; the stored sidecar is then left untouched,
+     * which matters because it carries the range bounds, the option types and the location list,
+     * not just the newest field.
+     */
+    public function reintrospect(string $hash): void
+    {
+        $this->transport->postVoid("/apworlds/{$hash}/introspect");
+    }
+
+    /**
      * Re-run the upload-time preflight test generation (story 9.38). The check is
      * asynchronous on the orchestrator: the returned verdict is "pending"; poll list()
      * for the final one.

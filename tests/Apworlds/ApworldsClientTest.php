@@ -424,6 +424,30 @@ final class ApworldsClientTest extends TestCase
         $client->regenerateYamlTemplate('aaa');
     }
 
+    public function testReintrospect_acceptsTheAcknowledgement(): void
+    {
+        $body = json_encode(['hash' => 'aaa', 'introspected' => true]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        // Nothing is returned on purpose: the parsed options are served by getOptions(), which
+        // merges them with the template. A second, subtly different shape of the same thing here
+        // would only invite callers to pick the wrong one.
+        $client->reintrospect('aaa');
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function testReintrospect_throwsWhenTheWorldCannotBeIntrospected(): void
+    {
+        // 422 means the sidecar was left untouched. It carries the range bounds, the option types
+        // and the location list, so a caller that swallowed this would keep serving stale data
+        // while believing it had refreshed.
+        $client = $this->client(new MockResponse(json_encode(['error' => 'reintrospect options: boom']) ?: '', ['http_code' => 422]));
+
+        $this->expectException(OrchestratorException::class);
+        $client->reintrospect('aaa');
+    }
+
     public function testRunPreflight_returnsPendingVerdict(): void
     {
         $body = json_encode(['hash' => 'aaa', 'preflight' => ['status' => 'pending', 'overridden' => false]]) ?: '';
