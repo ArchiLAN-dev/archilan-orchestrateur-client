@@ -103,6 +103,62 @@ final class ApworldsClientTest extends TestCase
         $this->assertSame([], $opt->validKeys);
     }
 
+    /**
+     * Story 9.51: a world that declares a `schema` for its OptionDict also says what each
+     * sub-setting accepts. Only the sub-settings it actually declares get an entry - the rest
+     * must stay absent, because an empty entry reads as "declared, and empty".
+     */
+    public function testUpload_dictOptionSubValues(): void
+    {
+        $body = $this->uploadBody('d1c9', [
+            ['key' => 'game_options', 'description' => 'In-game settings.', 'type' => 'dict',
+             'defaultValue' => ['battle_style' => 'shift', 'player_name' => 'AP'],
+             'validKeys' => ['battle_style', 'player_name'],
+             'keys' => [
+                 'battle_style' => ['values' => ['shift', 'set']],
+                 'text_frame' => ['values' => ['1', 2, '3']],
+                 'thinned' => ['values' => ['only', 4, null]],
+                 'sound' => ['values' => ['stereo']],
+                 'gender' => ['values' => []],
+                 'broken' => ['values' => 'not-a-list'],
+                 'empty' => [],
+             ]],
+        ]);
+        $client = $this->client(new MockResponse($body, ['http_code' => 201]));
+
+        $opt = $client->upload('binary-data', 'game.apworld')->options[0];
+
+        $this->assertInstanceOf(DictTemplateOption::class, $opt);
+        $this->assertSame(['shift', 'set'], $opt->keys['battle_style']->values);
+        // Non-strings are dropped, and what is left is re-indexed as a list.
+        $this->assertSame(['1', '3'], $opt->keys['text_frame']->values);
+        // Thinned down to a single survivor, it stops being a choice and disappears entirely -
+        // half a vocabulary in a dropdown is worse than none.
+        $this->assertArrayNotHasKey('thinned', $opt->keys);
+        // A single value is not a choice; neither is an empty or malformed one.
+        $this->assertArrayNotHasKey('sound', $opt->keys);
+        $this->assertArrayNotHasKey('gender', $opt->keys);
+        $this->assertArrayNotHasKey('broken', $opt->keys);
+        $this->assertArrayNotHasKey('empty', $opt->keys);
+        // A sub-setting the schema says nothing about carries nothing.
+        $this->assertArrayNotHasKey('player_name', $opt->keys);
+    }
+
+    /** A world that declares no schema carries no sub-option values at all. */
+    public function testUpload_dictOptionWithoutSchemaHasNoSubValues(): void
+    {
+        $body = $this->uploadBody('d1ca', [
+            ['key' => 'game_options', 'description' => 'In-game settings.', 'type' => 'dict',
+             'defaultValue' => ['battle_style' => 'shift'], 'validKeys' => ['battle_style']],
+        ]);
+        $client = $this->client(new MockResponse($body, ['http_code' => 201]));
+
+        $opt = $client->upload('binary-data', 'game.apworld')->options[0];
+
+        $this->assertInstanceOf(DictTemplateOption::class, $opt);
+        $this->assertSame([], $opt->keys);
+    }
+
     public function testUpload_choiceOption(): void
     {
         $body = $this->uploadBody('abc123', [
