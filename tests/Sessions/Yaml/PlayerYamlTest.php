@@ -7,6 +7,7 @@ namespace Archilan\OrchestratorClient\Tests\Sessions\Yaml;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\ChoiceOption;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\ItemDictOption;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\ItemListOption;
+use Archilan\OrchestratorClient\Sessions\Yaml\Option\OptionValue;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\RangeOption;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\ToggleOption;
 use Archilan\OrchestratorClient\Sessions\Yaml\Option\Weighted;
@@ -163,5 +164,94 @@ final class PlayerYamlTest extends TestCase
     {
         $option = new RangeOption('logic_percent', [new Weighted(80, 50), new Weighted(95, 10)]);
         $this->assertSame(['80' => 50, '95' => 10], $option->jsonSerialize());
+    }
+
+    /**
+     * An empty list option must stay a sequence.
+     *
+     * `Yaml::dump()` writes `{  }` for every empty array unless told otherwise, so this used to
+     * hand Archipelago an empty *mapping* where the world expects a list.
+     */
+    public function testToYamlString_emptyListOption_staysASequence(): void
+    {
+        $yaml = new PlayerYaml(
+            name: 'Jean',
+            game: 'Timespinner',
+            options: [new ItemListOption('local_items', [])],
+        );
+
+        $this->assertStringContainsString('local_items: []', $yaml->toYamlString());
+    }
+
+    /**
+     * ...and an empty dict option must stay a mapping, which is the other half of the same coin:
+     * Archipelago's `OptionDict::from_any` rejects `start_inventory: []` outright.
+     */
+    public function testToYamlString_emptyDictOption_staysAMapping(): void
+    {
+        $yaml = new PlayerYaml(
+            name: 'Jean',
+            game: 'Timespinner',
+            options: [new ItemDictOption('start_inventory', [])],
+        );
+
+        $yamlString = $yaml->toYamlString();
+
+        $this->assertMatchesRegularExpression('/start_inventory: \{\s*\}/', $yamlString);
+        $this->assertStringNotContainsString('start_inventory: []', $yamlString);
+    }
+
+    /**
+     * The shape that broke Starcraft 2: empty lists nested inside a dict option.
+     *
+     * `custom_mission_order` tells a layout from a plain setting by `type(val) == dict`, so an
+     * `entry_rules: []` rewritten to `entry_rules: {}` was promoted to a layout, and generation
+     * died on `Key 'entry_rules' error: ... should be instance of 'list'`.
+     */
+    public function testToYamlString_emptyListNestedInADictOption_staysASequence(): void
+    {
+        $option = new class implements OptionValue {
+            public function getKey(): string
+            {
+                return 'custom_mission_order';
+            }
+
+            /** @return array<string, mixed> */
+            public function jsonSerialize(): array
+            {
+                return ['Default Campaign' => [
+                    'entry_rules' => [],
+                    'global' => ['entry_rules' => [], 'missions' => [], 'mission_pool' => ['all missions']],
+                ]];
+            }
+        };
+
+        $parsed = Yaml::parse((new PlayerYaml(name: 'Jean', game: 'Starcraft 2', options: [$option]))->toYamlString());
+
+        $this->assertIsArray($parsed);
+        $section = $parsed['Starcraft 2'] ?? [];
+        $this->assertIsArray($section);
+        $missionOrder = $section['custom_mission_order'] ?? [];
+        $this->assertIsArray($missionOrder);
+        $campaign = $missionOrder['Default Campaign'] ?? [];
+        $this->assertIsArray($campaign);
+        $global = $campaign['global'] ?? [];
+        $this->assertIsArray($global);
+
+        $this->assertSame([], $campaign['entry_rules']);
+        $this->assertSame([], $global['entry_rules']);
+        $this->assertSame([], $global['missions']);
+        $this->assertSame(['all missions'], $global['mission_pool']);
+    }
+
+    public function testItemDictOption_empty_serializesAsObject(): void
+    {
+        $this->assertEquals(new \stdClass(), (new ItemDictOption('start_inventory', []))->jsonSerialize());
+        $this->assertSame('{}', json_encode((new ItemDictOption('start_inventory', []))->jsonSerialize()));
+    }
+
+    public function testItemDictOption_nonEmpty_serializesAsArray(): void
+    {
+        $this->assertSame(['Boots' => 1], (new ItemDictOption('start_inventory', ['Boots' => 1]))->jsonSerialize());
     }
 }

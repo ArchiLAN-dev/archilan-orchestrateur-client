@@ -24,9 +24,19 @@ final readonly class ItemDictOption implements OptionValue
         return $this->key;
     }
 
-    /** @return array<string, int> */
-    public function jsonSerialize(): array
+    /**
+     * An empty dict option is returned as an object, never as `[]`.
+     *
+     * PHP cannot tell an empty list from an empty map, and both the YAML dumper and `json_encode`
+     * default an empty array to the *sequence* form. Archipelago's `OptionDict::from_any` rejects
+     * anything but a mapping ("Cannot Convert from non-dictionary"), so `start_inventory: []` would
+     * fail generation outright. See {@see \Archilan\OrchestratorClient\Sessions\Yaml\PlayerYaml}
+     * for the empty-collection convention this upholds.
+     *
+     * @return array<string, int>|\stdClass
+     */
+    public function jsonSerialize(): array|\stdClass
     {
-        return $this->items;
+        return [] === $this->items ? new \stdClass() : $this->items;
     }
 }
