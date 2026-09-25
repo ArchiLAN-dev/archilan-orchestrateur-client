@@ -9,7 +9,8 @@ namespace Archilan\OrchestratorClient\Apworlds\Response;
  *
  * Status is one of pending | passed | failed | skipped ("skipped" = no template YAML to
  * test with, the check could not run - treat as unknown, not as passed). Overridden is the
- * admin "force allow" escape hatch for a failed verdict.
+ * admin "force allow" escape hatch for a failed verdict. Image and imageId name the Archipelago
+ * image the verdict was produced with (story 38.8); null on a verdict older than that.
  */
 final readonly class ApworldPreflight
 {
@@ -23,6 +24,8 @@ final readonly class ApworldPreflight
         public string $error = '',
         public string $checkedAt = '',
         public bool $overridden = false,
+        public ?string $image = null,
+        public ?string $imageId = null,
     ) {
     }
 
@@ -34,7 +37,17 @@ final readonly class ApworldPreflight
             error: is_string($data['error'] ?? null) ? $data['error'] : '',
             checkedAt: is_string($data['checkedAt'] ?? null) ? $data['checkedAt'] : '',
             overridden: true === ($data['overridden'] ?? null),
+            image: self::optionalString($data, 'image'),
+            imageId: self::optionalString($data, 'imageId'),
         );
+    }
+
+    /** @param array<string, mixed> $data */
+    private static function optionalString(array $data, string $key): ?string
+    {
+        $value = $data[$key] ?? null;
+
+        return is_string($value) && '' !== $value ? $value : null;
     }
 
     /** A failed, non-overridden verdict is the only state that blocks using the apworld. */

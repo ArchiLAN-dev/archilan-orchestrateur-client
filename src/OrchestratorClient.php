@@ -8,6 +8,7 @@ use Archilan\OrchestratorClient\Apworlds\ApworldsClient;
 use Archilan\OrchestratorClient\Containers\ContainersClient;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\Preflight\PreflightClient;
+use Archilan\OrchestratorClient\Runtime\RuntimeClient;
 use Archilan\OrchestratorClient\Sessions\SessionsClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -18,6 +19,7 @@ final class OrchestratorClient
     private readonly ContainersClient $containers;
     private readonly ApworldsClient $apworlds;
     private readonly PreflightClient $preflight;
+    private readonly RuntimeClient $runtime;
 
     public function __construct(
         string $baseUrl,
@@ -29,6 +31,7 @@ final class OrchestratorClient
         $this->containers = new ContainersClient($this->transport);
         $this->apworlds = new ApworldsClient($this->transport);
         $this->preflight = new PreflightClient($this->transport);
+        $this->runtime = new RuntimeClient($this->transport);
     }
 
     public function sessions(): SessionsClient
@@ -49,5 +52,11 @@ final class OrchestratorClient
     public function preflight(): PreflightClient
     {
         return $this->preflight;
+    }
+
+    /** Story 38.8: the Archipelago image the orchestrator runs. */
+    public function runtime(): RuntimeClient
+    {
+        return $this->runtime;
     }
 }

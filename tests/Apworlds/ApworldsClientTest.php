@@ -381,6 +381,25 @@ final class ApworldsClientTest extends TestCase
         $this->assertNull($entries[1]->preflight);
     }
 
+    /** Story 38.8: a verdict names the Archipelago image that produced it. */
+    public function testPreflight_readsImageAndImageIdWhenPresent(): void
+    {
+        $preflight = ApworldPreflight::fromArray([
+            'status' => 'passed', 'image' => 'ghcr.io/archilan-dev/archipelago:0.16.1', 'imageId' => 'sha256:abc123',
+        ]);
+
+        $this->assertSame('ghcr.io/archilan-dev/archipelago:0.16.1', $preflight->image);
+        $this->assertSame('sha256:abc123', $preflight->imageId);
+    }
+
+    public function testPreflight_imageIsNullForALegacyVerdict(): void
+    {
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'image' => '']);
+
+        $this->assertNull($preflight->image);
+        $this->assertNull($preflight->imageId);
+    }
+
     public function testBlocksUsage_onlyForFailedNonOverridden(): void
     {
         $this->assertTrue((new ApworldPreflight(status: ApworldPreflight::STATUS_FAILED))->blocksUsage());
