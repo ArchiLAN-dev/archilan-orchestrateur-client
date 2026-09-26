@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Archilan\OrchestratorClient\Tests\Runtime;
 
+use Archilan\OrchestratorClient\Exception\NotFoundException;
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
+use Archilan\OrchestratorClient\Exception\SessionNotFoundException;
 use Archilan\OrchestratorClient\OrchestratorClient;
+use Archilan\OrchestratorClient\Runtime\Response\RuntimeInfo;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -39,6 +42,26 @@ final class RuntimeClientTest extends TestCase
 
         $this->assertSame('archipelago:latest', $runtime->apImage);
         $this->assertNull($runtime->apImageId);
+    }
+
+    /** Story 38.8 review: an orchestrator older than GET /runtime is not a missing session. */
+    public function testGet_anOrchestratorWithoutTheEndpointSaysSo(): void
+    {
+        $http = new MockHttpClient(new MockResponse('{"error":"not_found"}', ['http_code' => 404]));
+
+        try {
+            (new OrchestratorClient('http://localhost:8000', 'key', $http))->runtime()->get();
+            self::fail('Expected a NotFoundException.');
+        } catch (NotFoundException $e) {
+            self::assertNotInstanceOf(SessionNotFoundException::class, $e);
+            self::assertStringContainsString('/runtime', $e->getMessage());
+        }
+    }
+
+    public function testFromArray_refusesAResponseWithoutImage(): void
+    {
+        $this->expectException(OrchestratorException::class);
+        RuntimeInfo::fromArray(['apImageId' => 'sha256:abc']);
     }
 
     public function testGet_aResponseWithoutImageIsAnError(): void

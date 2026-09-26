@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Archilan\OrchestratorClient\Runtime;
 
+use Archilan\OrchestratorClient\Exception\NotFoundException;
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
+use Archilan\OrchestratorClient\Exception\SessionNotFoundException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\Runtime\Response\RuntimeInfo;
 
@@ -17,15 +19,18 @@ final class RuntimeClient
     /**
      * GET /runtime (story 38.8).
      *
+     * @throws NotFoundException    when the orchestrator predates GET /runtime
      * @throws OrchestratorException when the response names no image
      */
     public function get(): RuntimeInfo
     {
-        $runtime = RuntimeInfo::fromArray($this->transport->getJson('/runtime'));
-        if ('' === $runtime->apImage) {
-            throw new OrchestratorException('Missing apImage in runtime response');
+        try {
+            $data = $this->transport->getJson('/runtime');
+        } catch (SessionNotFoundException $e) {
+            // The transport reads every 404 as a missing session; here it is a missing endpoint.
+            throw new NotFoundException('GET /runtime is not available on this orchestrator (older than story 38.8?)', 0, $e);
         }
 
-        return $runtime;
+        return RuntimeInfo::fromArray($data);
     }
 }

@@ -394,9 +394,18 @@ final class ApworldsClientTest extends TestCase
 
     public function testPreflight_imageIsNullForALegacyVerdict(): void
     {
-        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'image' => '']);
+        // The orchestrator omits empty fields: an old verdict has no image key at all.
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'checkedAt' => '2026-07-01T10:00:00Z']);
 
         $this->assertNull($preflight->image);
+        $this->assertNull($preflight->imageId);
+    }
+
+    public function testPreflight_anInspectionThatFailedKeepsTheReferenceWithoutId(): void
+    {
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'image' => 'archipelago:latest', 'imageId' => '']);
+
+        $this->assertSame('archipelago:latest', $preflight->image);
         $this->assertNull($preflight->imageId);
     }
 
