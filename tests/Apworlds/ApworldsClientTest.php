@@ -381,6 +381,34 @@ final class ApworldsClientTest extends TestCase
         $this->assertNull($entries[1]->preflight);
     }
 
+    /** Story 38.8: a verdict names the Archipelago image that produced it. */
+    public function testPreflight_readsImageAndImageIdWhenPresent(): void
+    {
+        $preflight = ApworldPreflight::fromArray([
+            'status' => 'passed', 'image' => 'ghcr.io/archilan-dev/archipelago:0.16.1', 'imageId' => 'sha256:abc123',
+        ]);
+
+        $this->assertSame('ghcr.io/archilan-dev/archipelago:0.16.1', $preflight->image);
+        $this->assertSame('sha256:abc123', $preflight->imageId);
+    }
+
+    public function testPreflight_imageIsNullForALegacyVerdict(): void
+    {
+        // The orchestrator omits empty fields: an old verdict has no image key at all.
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'checkedAt' => '2026-07-01T10:00:00Z']);
+
+        $this->assertNull($preflight->image);
+        $this->assertNull($preflight->imageId);
+    }
+
+    public function testPreflight_anInspectionThatFailedKeepsTheReferenceWithoutId(): void
+    {
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'image' => 'archipelago:latest', 'imageId' => '']);
+
+        $this->assertSame('archipelago:latest', $preflight->image);
+        $this->assertNull($preflight->imageId);
+    }
+
     public function testBlocksUsage_onlyForFailedNonOverridden(): void
     {
         $this->assertTrue((new ApworldPreflight(status: ApworldPreflight::STATUS_FAILED))->blocksUsage());
