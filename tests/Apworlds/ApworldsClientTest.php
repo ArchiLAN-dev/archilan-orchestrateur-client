@@ -409,6 +409,20 @@ final class ApworldsClientTest extends TestCase
         $this->assertNull($preflight->imageId);
     }
 
+    public function testPreflight_readsTheWarningOfAPass(): void
+    {
+        // Story 38.12: a pass the generator warned about (accessibility not met, as the Launcher allows).
+        $preflight = ApworldPreflight::fromArray(['status' => 'passed', 'warning' => 'Missing: [Discover: Evil Dragon]']);
+
+        $this->assertSame('Missing: [Discover: Evil Dragon]', $preflight->warning);
+        $this->assertFalse($preflight->blocksUsage(), 'a pass with a warning is a pass');
+    }
+
+    public function testPreflight_noWarningIsEmpty(): void
+    {
+        $this->assertSame('', ApworldPreflight::fromArray(['status' => 'passed'])->warning);
+    }
+
     public function testBlocksUsage_onlyForFailedNonOverridden(): void
     {
         $this->assertTrue((new ApworldPreflight(status: ApworldPreflight::STATUS_FAILED))->blocksUsage());

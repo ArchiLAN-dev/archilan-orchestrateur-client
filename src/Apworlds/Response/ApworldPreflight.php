@@ -14,7 +14,9 @@ use Archilan\OrchestratorClient\Support\ResponseFields;
  * admin "force allow" escape hatch for a failed verdict. Image and imageId name the Archipelago
  * image the verdict was produced with (story 38.8). Both are null on a verdict older than that story,
  * on a pending verdict (its run has not produced anything yet) and on a skipped one (nothing ran);
- * imageId alone is null when the orchestrator could not inspect the image.
+ * imageId alone is null when the orchestrator could not inspect the image. Warning is what the generator
+ * reported on a pass (story 38.12), e.g. an accessibility check not met that the official Launcher also lets
+ * through: the apworld is usable, but its author has something to fix. Empty otherwise.
  */
 final readonly class ApworldPreflight
 {
@@ -30,6 +32,7 @@ final readonly class ApworldPreflight
         public bool $overridden = false,
         public ?string $image = null,
         public ?string $imageId = null,
+        public string $warning = '',
     ) {
     }
 
@@ -43,6 +46,7 @@ final readonly class ApworldPreflight
             overridden: true === ($data['overridden'] ?? null),
             image: ResponseFields::optionalString($data, 'image'),
             imageId: ResponseFields::optionalString($data, 'imageId'),
+            warning: is_string($data['warning'] ?? null) ? $data['warning'] : '',
         );
     }
 
