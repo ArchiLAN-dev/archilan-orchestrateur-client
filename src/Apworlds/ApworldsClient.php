@@ -9,6 +9,7 @@ use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
 use Archilan\OrchestratorClient\Http\HttpTransport;
+use Archilan\OrchestratorClient\RequiredFiles\Response\DeclaredFile;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 
@@ -78,6 +79,17 @@ final class ApworldsClient implements \IteratorAggregate
         }
 
         return $locations;
+    }
+
+    /**
+     * The files the apworld's world declares in its host.yaml settings (story 44.3), read at
+     * introspection. Empty until the apworld is (re)introspected.
+     *
+     * @return list<DeclaredFile>
+     */
+    public function getDeclaredFiles(string $hash): array
+    {
+        return DeclaredFile::listFrom($this->transport->getJson("/apworlds/{$hash}/required-files")['requiredFiles'] ?? null);
     }
 
     /**

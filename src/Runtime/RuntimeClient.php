@@ -7,7 +7,9 @@ namespace Archilan\OrchestratorClient\Runtime;
 use Archilan\OrchestratorClient\Exception\NotFoundException;
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
 use Archilan\OrchestratorClient\Exception\SessionNotFoundException;
+use Archilan\OrchestratorClient\Exception\ServiceUnavailableException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
+use Archilan\OrchestratorClient\RequiredFiles\Response\OfficialDeclaredFiles;
 use Archilan\OrchestratorClient\Runtime\Response\RuntimeInfo;
 
 final class RuntimeClient
@@ -32,5 +34,22 @@ final class RuntimeClient
         }
 
         return RuntimeInfo::fromArray($data);
+    }
+
+    /**
+     * GET /runtime/required-files (story 44.3): the files the image's own worlds declare.
+     *
+     * @throws NotFoundException             when the orchestrator predates story 44.3
+     * @throws ServiceUnavailableException   when the image could not list them
+     */
+    public function getDeclaredFiles(): OfficialDeclaredFiles
+    {
+        try {
+            $data = $this->transport->getJson('/runtime/required-files');
+        } catch (SessionNotFoundException $e) {
+            throw new NotFoundException('GET /runtime/required-files is not available on this orchestrator (older than story 44.3?)', 0, $e);
+        }
+
+        return OfficialDeclaredFiles::fromArray($data);
     }
 }
