@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Archilan\OrchestratorClient\Sessions;
 
+use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\Sessions\Request\ConfigureRequest;
 use Archilan\OrchestratorClient\Sessions\Request\PreflightRequest;
@@ -22,8 +23,12 @@ final class SessionsClient
     /**
      * @param array<string, mixed> $generationOptions optional generator options forwarded as-is
      *                                                 (e.g. plandoOptions, race, spoiler)
+     * @param list<string>         $requiredFileIds   files held by requiredFiles()->stage() that this
+     *                                                 generation consumes (story 44.2)
+     *
+     * @throws RequiredFileExpiredException when one of them is no longer held
      */
-    public function generate(string $sessionId, string $adminPassword, ?string $seed = null, array $generationOptions = []): void
+    public function generate(string $sessionId, string $adminPassword, ?string $seed = null, array $generationOptions = [], array $requiredFileIds = []): void
     {
         $body = ['adminPassword' => $adminPassword];
         if (null !== $seed) {
@@ -31,6 +36,9 @@ final class SessionsClient
         }
         foreach ($generationOptions as $key => $value) {
             $body[$key] = $value;
+        }
+        if ([] !== $requiredFileIds) {
+            $body['requiredFileIds'] = $requiredFileIds;
         }
         $this->transport->postVoid("/sessions/{$sessionId}/generate", $body);
     }

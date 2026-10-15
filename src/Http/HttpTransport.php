@@ -6,6 +6,7 @@ namespace Archilan\OrchestratorClient\Http;
 
 use Archilan\OrchestratorClient\Exception\ConflictException;
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
+use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
 use Archilan\OrchestratorClient\Exception\ServiceUnavailableException;
 use Archilan\OrchestratorClient\Exception\SessionNotFoundException;
 use Archilan\OrchestratorClient\Exception\TransportException;
@@ -138,6 +139,35 @@ final class HttpTransport
         }
     }
 
+    /**
+     * Same as postMultipartJson, the body streamed instead of built in memory (story 44.2: files up
+     * to 64 MiB).
+     *
+     * @return array<string, mixed>
+     */
+    public function postMultipartStreamedJson(string $path, FormDataPart $form): array
+    {
+        try {
+            $response = $this->httpClient->request('POST', $this->url($path), [
+                'headers' => array_merge(
+                    ['Authorization' => 'Bearer '.$this->apiKey],
+                    $form->getPreparedHeaders()->toArray(),
+                ),
+                'body' => $form->bodyToIterable(),
+            ]);
+            $status = $response->getStatusCode();
+            if ($status < 200 || $status >= 300) {
+                $this->mapError($status, $this->tryDecodeJson($response->getContent(false)));
+            }
+
+            return $this->decodeJson($response->getContent(false));
+        } catch (OrchestratorException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw new TransportException($e->getMessage(), $e);
+        }
+    }
+
     /** @return array<string, mixed> */
     public function getJson(string $path): array
     {
@@ -205,6 +235,10 @@ final class HttpTransport
 
         if (409 === $status) {
             throw new ConflictException($errorCode);
+        }
+
+        if (422 === $status && 'required_file_expired' === $errorCode) {
+            throw new RequiredFileExpiredException('A required file is unknown or expired: send it again');
         }
 
         if (503 === $status) {
