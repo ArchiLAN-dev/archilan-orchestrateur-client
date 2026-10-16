@@ -14,6 +14,7 @@ use Archilan\OrchestratorClient\Apworlds\Response\TextTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\ToggleTemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
+use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -498,6 +499,35 @@ final class ApworldsClientTest extends TestCase
         $verdict = $client->runPreflight('aaa');
 
         $this->assertSame(ApworldPreflight::STATUS_PENDING, $verdict->status);
+    }
+
+    // Story 44.6: the admin's re-check names the staged files it reads.
+    public function testRunPreflight_sendsTheStagedFiles(): void
+    {
+        $sent = null;
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$sent): MockResponse {
+            $sent = json_decode($options['body'] ?? '', true);
+
+            return new MockResponse(json_encode(['hash' => 'aaa', 'preflight' => ['status' => 'pending']]) ?: '', ['http_code' => 202]);
+        });
+
+        (new ApworldsClient(new HttpTransport($mock, 'http://localhost:8000', 'key')))->runPreflight('aaa', ['f1']);
+
+        $this->assertSame(['requiredFileIds' => ['f1']], $sent);
+    }
+
+    public function testRunPreflight_anExpiredFileIsTyped(): void
+    {
+        $client = $this->client(new MockResponse(json_encode(['error' => 'required_file_expired']) ?: '', ['http_code' => 422]));
+
+        $this->expectException(RequiredFileExpiredException::class);
+        $client->runPreflight('aaa', ['gone']);
+    }
+
+    public function testThePreflightSaysItRanWithAFile(): void
+    {
+        $this->assertTrue(ApworldPreflight::fromArray(['status' => 'passed', 'withRequiredFiles' => true])->withRequiredFiles);
+        $this->assertFalse(ApworldPreflight::fromArray(['status' => 'passed'])->withRequiredFiles);
     }
 
     public function testOverridePreflight_returnsUpdatedVerdict(): void

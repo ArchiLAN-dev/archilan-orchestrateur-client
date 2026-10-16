@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Preflight;
 
 use Archilan\OrchestratorClient\Exception\OrchestratorException;
+use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\Preflight\Response\SlotPreflightJob;
 
@@ -21,12 +22,19 @@ final class PreflightClient
     /**
      * Queue a solo test generation. $apworldHash is null for official worlds bundled in
      * the generation image. Returns the job in "pending" state.
+     *
+     * @param list<string> $requiredFileIds files held by requiredFiles()->stage() that the test reads (story 44.6)
+     *
+     * @throws RequiredFileExpiredException when one of them is no longer held
      */
-    public function start(string $playerYaml, ?string $apworldHash = null): SlotPreflightJob
+    public function start(string $playerYaml, ?string $apworldHash = null, array $requiredFileIds = []): SlotPreflightJob
     {
         $body = ['playerYaml' => $playerYaml];
         if (null !== $apworldHash && '' !== $apworldHash) {
             $body['apworldHash'] = $apworldHash;
+        }
+        if ([] !== $requiredFileIds) {
+            $body['requiredFileIds'] = $requiredFileIds;
         }
 
         $job = SlotPreflightJob::fromArray($this->transport->postJson('/preflight-generations', $body));

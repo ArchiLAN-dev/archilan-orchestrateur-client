@@ -8,6 +8,7 @@ use Archilan\OrchestratorClient\Apworlds\Response\ApworldEntry;
 use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
+use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\RequiredFiles\Response\DeclaredFile;
 use Symfony\Component\Mime\Part\DataPart;
@@ -136,10 +137,17 @@ final class ApworldsClient implements \IteratorAggregate
      * Re-run the upload-time preflight test generation (story 9.38). The check is
      * asynchronous on the orchestrator: the returned verdict is "pending"; poll list()
      * for the final one.
+     *
+     * @param list<string> $requiredFileIds files held by requiredFiles()->stage() that the test reads, a ROM
+     *                                      provided by an admin (story 44.6); the verdict then says withRequiredFiles
+     *
+     * @throws RequiredFileExpiredException when one of them is no longer held
      */
-    public function runPreflight(string $hash): ApworldPreflight
+    public function runPreflight(string $hash, array $requiredFileIds = []): ApworldPreflight
     {
-        return $this->preflightFromResponse($this->transport->postJson("/apworlds/{$hash}/preflight"));
+        $body = [] !== $requiredFileIds ? ['requiredFileIds' => $requiredFileIds] : [];
+
+        return $this->preflightFromResponse($this->transport->postJson("/apworlds/{$hash}/preflight", $body));
     }
 
     /** Toggle the admin "force allow" override on a failed preflight verdict (story 9.38). */
