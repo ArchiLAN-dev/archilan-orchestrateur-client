@@ -16,7 +16,8 @@ use Archilan\OrchestratorClient\Support\ResponseFields;
  * on a pending verdict (its run has not produced anything yet) and on a skipped one (nothing ran);
  * imageId alone is null when the orchestrator could not inspect the image. Warning is what the generator
  * reported on a pass (story 38.12), e.g. an accessibility check not met that the official Launcher also lets
- * through: the apworld is usable, but its author has something to fix. Empty otherwise.
+ * through: the apworld is usable, but its author has something to fix. Empty otherwise. WithRequiredFiles says the
+ * test generation was given the file its world reads, a ROM only an admin can provide (story 44.6).
  */
 final readonly class ApworldPreflight
 {
@@ -33,6 +34,7 @@ final readonly class ApworldPreflight
         public ?string $image = null,
         public ?string $imageId = null,
         public string $warning = '',
+        public bool $withRequiredFiles = false,
     ) {
     }
 
@@ -47,6 +49,7 @@ final readonly class ApworldPreflight
             image: ResponseFields::optionalString($data, 'image'),
             imageId: ResponseFields::optionalString($data, 'imageId'),
             warning: is_string($data['warning'] ?? null) ? $data['warning'] : '',
+            withRequiredFiles: true === ($data['withRequiredFiles'] ?? null),
         );
     }
 

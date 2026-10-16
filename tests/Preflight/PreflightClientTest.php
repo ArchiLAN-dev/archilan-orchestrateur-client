@@ -33,6 +33,24 @@ final class PreflightClientTest extends TestCase
         $this->assertFalse($job->isSettled());
     }
 
+    // Story 44.6: the admin's YAML test names the staged files it reads; without any, the body is unchanged.
+    public function testStart_sendsTheStagedFiles(): void
+    {
+        $sent = [];
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$sent): MockResponse {
+            $sent[] = json_decode($options['body'] ?? '', true);
+
+            return new MockResponse(json_encode(['id' => 'job-1', 'status' => 'pending']) ?: '', ['http_code' => 202]);
+        });
+        $client = new PreflightClient(new HttpTransport($mock, 'http://localhost:8000', 'key'));
+
+        $client->start('game: X', 'deadbeef', ['f1']);
+        $client->start('game: X', 'deadbeef');
+
+        $this->assertSame(['playerYaml' => 'game: X', 'apworldHash' => 'deadbeef', 'requiredFileIds' => ['f1']], $sent[0]);
+        $this->assertSame(['playerYaml' => 'game: X', 'apworldHash' => 'deadbeef'], $sent[1]);
+    }
+
     public function testStart_missingIdThrows(): void
     {
         $body = json_encode(['status' => 'pending']) ?: '';
