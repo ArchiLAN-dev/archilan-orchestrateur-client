@@ -359,6 +359,38 @@ final class ApworldsClientTest extends TestCase
         $this->assertSame(['A', 'B'], $client->getLocations('deadbeef'));
     }
 
+    public function testGetItems_parsesItemsAndGroups(): void
+    {
+        $body = json_encode(['items' => ['Dream_Nail', 'Mantis_Claw'], 'itemGroups' => ['Skills' => ['Dream_Nail', 'Mantis_Claw']]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $items = $client->getItems('deadbeef');
+
+        $this->assertSame(['Dream_Nail', 'Mantis_Claw'], $items->items);
+        $this->assertSame(['Skills' => ['Dream_Nail', 'Mantis_Claw']], $items->groups);
+    }
+
+    public function testGetItems_emptyWhenNotIntrospected(): void
+    {
+        $client = $this->client(new MockResponse(json_encode(['items' => [], 'itemGroups' => []]) ?: '', ['http_code' => 200]));
+
+        $items = $client->getItems('deadbeef');
+
+        $this->assertSame([], $items->items);
+        $this->assertSame([], $items->groups);
+    }
+
+    public function testGetItems_dropsWhatIsNotAName(): void
+    {
+        $body = json_encode(['items' => ['A', 1, null, ''], 'itemGroups' => ['G' => ['A', 2], 'Empty' => [], 'Bad' => 'A']]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $items = $client->getItems('deadbeef');
+
+        $this->assertSame(['A'], $items->items);
+        $this->assertSame(['G' => ['A']], $items->groups);
+    }
+
     public function testList_parsesPreflightVerdict(): void
     {
         $body = json_encode(['apworlds' => [
