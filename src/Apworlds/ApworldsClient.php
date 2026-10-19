@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Archilan\OrchestratorClient\Apworlds;
 
 use Archilan\OrchestratorClient\Apworlds\Response\ApworldEntry;
+use Archilan\OrchestratorClient\Apworlds\Response\ApworldItems;
 use Archilan\OrchestratorClient\Apworlds\Response\ApworldPreflight;
 use Archilan\OrchestratorClient\Apworlds\Response\TemplateOption;
 use Archilan\OrchestratorClient\Apworlds\Response\UploadApworldResult;
@@ -80,6 +81,15 @@ final class ApworldsClient implements \IteratorAggregate
         }
 
         return $locations;
+    }
+
+    /**
+     * Static item names and item groups introspected from the apworld's World class (story 9.58), for the
+     * options that take items (start_hints, start_inventory, local_items...). A hint like the locations.
+     */
+    public function getItems(string $hash): ApworldItems
+    {
+        return ApworldItems::fromArray($this->transport->getJson("/apworlds/{$hash}/items"));
     }
 
     /**
