@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Archilan\OrchestratorClient\Sessions;
 
+use Archilan\OrchestratorClient\Exception\NotFoundException;
+use Archilan\OrchestratorClient\Exception\OrchestratorException;
 use Archilan\OrchestratorClient\Exception\RequiredFileExpiredException;
+use Archilan\OrchestratorClient\Exception\SessionNotFoundException;
 use Archilan\OrchestratorClient\Http\HttpTransport;
 use Archilan\OrchestratorClient\Sessions\Request\ConfigureRequest;
 use Archilan\OrchestratorClient\Sessions\Request\PreflightRequest;
 use Archilan\OrchestratorClient\Sessions\Response\ConfigureResult;
 use Archilan\OrchestratorClient\Sessions\Response\PreflightResult;
+use Archilan\OrchestratorClient\Sessions\Response\SessionLogs;
 use Archilan\OrchestratorClient\Sessions\Response\SessionResponse;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\Multipart\FormDataPart;
@@ -117,6 +121,28 @@ final class SessionsClient
     public function get(string $sessionId): SessionResponse
     {
         return SessionResponse::fromArray($this->transport->getJson("/sessions/{$sessionId}"));
+    }
+
+    /**
+     * GET /sessions/{sessionId}/logs (story 17.33): the last lines of one of the session's containers.
+     *
+     * @param 'ap'|'bridge'|'gen' $container the Archipelago server, the bridge or the generation
+     * @param int                  $tail      number of lines, 1 to 2000
+     *
+     * @throws NotFoundException    when the orchestrator predates story 17.33
+     * @throws OrchestratorException on an invalid container or tail, or a Docker failure
+     */
+    public function logs(string $sessionId, string $container, int $tail = 200): SessionLogs
+    {
+        $query = http_build_query(['container' => $container, 'tail' => $tail]);
+        try {
+            $data = $this->transport->getJson("/sessions/{$sessionId}/logs?{$query}");
+        } catch (SessionNotFoundException $e) {
+            // The route never answers 404: a 404 is an orchestrator without it.
+            throw new NotFoundException('GET /sessions/{id}/logs is not available on this orchestrator (older than story 17.33?)', 0, $e);
+        }
+
+        return SessionLogs::fromArray($data);
     }
 
     public function delete(string $sessionId): void
