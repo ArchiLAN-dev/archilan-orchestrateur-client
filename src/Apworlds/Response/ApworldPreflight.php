@@ -35,6 +35,7 @@ final readonly class ApworldPreflight
         public ?string $imageId = null,
         public string $warning = '',
         public bool $withRequiredFiles = false,
+        public bool $withPartner = false,
     ) {
     }
 
@@ -50,6 +51,7 @@ final readonly class ApworldPreflight
             imageId: ResponseFields::optionalString($data, 'imageId'),
             warning: is_string($data['warning'] ?? null) ? $data['warning'] : '',
             withRequiredFiles: true === ($data['withRequiredFiles'] ?? null),
+            withPartner: true === ($data['withPartner'] ?? null),
         );
     }
 

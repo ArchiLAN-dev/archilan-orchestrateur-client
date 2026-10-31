@@ -219,6 +219,25 @@ final class ApworldsClientTest extends TestCase
         $this->assertStringContainsString('zelda.apworld', $capturedBody);
     }
 
+    // Story 38.30: the upload of a meta-game's apworld asks its test generation for a partner player.
+    public function testUpload_asksForAPartnerOnlyWhenTold(): void
+    {
+        $bodies = [];
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$bodies): MockResponse {
+            $body = $options['body'] ?? '';
+            $bodies[] = is_string($body) ? $body : '';
+
+            return new MockResponse($this->uploadBody('abc', []) ?: '', ['http_code' => 201]);
+        });
+        $client = new ApworldsClient(new HttpTransport($mock, 'http://localhost:8000', 'key'));
+
+        $client->upload('file-binary-content', 'tombola.apworld', true);
+        $client->upload('file-binary-content', 'tombola.apworld');
+
+        $this->assertStringContainsString('name="withPartner"', $bodies[0]);
+        $this->assertStringNotContainsString('withPartner', $bodies[1]);
+    }
+
     public function testUpload_toggleTrueDefault(): void
     {
         $body = $this->uploadBody('abc123', [
@@ -546,6 +565,27 @@ final class ApworldsClientTest extends TestCase
         (new ApworldsClient(new HttpTransport($mock, 'http://localhost:8000', 'key')))->runPreflight('aaa', ['f1']);
 
         $this->assertSame(['requiredFileIds' => ['f1']], $sent);
+    }
+
+    // Story 38.30: the re-check of a meta-game asks for a partner player.
+    public function testRunPreflight_asksForAPartner(): void
+    {
+        $sent = null;
+        $mock = new MockHttpClient(function (string $method, string $url, array $options) use (&$sent): MockResponse {
+            $sent = json_decode($options['body'] ?? '', true);
+
+            return new MockResponse(json_encode(['hash' => 'aaa', 'preflight' => ['status' => 'pending']]) ?: '', ['http_code' => 202]);
+        });
+
+        (new ApworldsClient(new HttpTransport($mock, 'http://localhost:8000', 'key')))->runPreflight('aaa', [], true);
+
+        $this->assertSame(['withPartner' => true], $sent);
+    }
+
+    public function testThePreflightSaysItRanWithAPartner(): void
+    {
+        $this->assertTrue(ApworldPreflight::fromArray(['status' => 'passed', 'withPartner' => true])->withPartner);
+        $this->assertFalse(ApworldPreflight::fromArray(['status' => 'passed'])->withPartner);
     }
 
     public function testRunPreflight_anExpiredFileIsTyped(): void

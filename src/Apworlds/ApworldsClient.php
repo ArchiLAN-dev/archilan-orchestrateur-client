@@ -28,11 +28,17 @@ final class ApworldsClient implements \IteratorAggregate
         return new \ArrayIterator($this->list());
     }
 
-    public function upload(string $fileContents, string $filename): UploadApworldResult
+    /**
+     * @param bool $withPartner the test generation the upload starts adds a partner player, for a meta-game that
+     *                          cannot generate solo (story 38.30)
+     */
+    public function upload(string $fileContents, string $filename, bool $withPartner = false): UploadApworldResult
     {
-        $form = new FormDataPart([
-            'file' => new DataPart($fileContents, $filename, 'application/octet-stream'),
-        ]);
+        $fields = ['file' => new DataPart($fileContents, $filename, 'application/octet-stream')];
+        if ($withPartner) {
+            $fields['withPartner'] = '1';
+        }
+        $form = new FormDataPart($fields);
 
         return UploadApworldResult::fromArray($this->transport->postMultipartJson('/apworlds', $form));
     }
@@ -150,12 +156,17 @@ final class ApworldsClient implements \IteratorAggregate
      *
      * @param list<string> $requiredFileIds files held by requiredFiles()->stage() that the test reads, a ROM
      *                                      provided by an admin (story 44.6); the verdict then says withRequiredFiles
+     * @param bool         $withPartner     adds a partner player, for a meta-game that cannot generate solo (story
+     *                                      38.30); the verdict then says withPartner
      *
      * @throws RequiredFileExpiredException when one of them is no longer held
      */
-    public function runPreflight(string $hash, array $requiredFileIds = []): ApworldPreflight
+    public function runPreflight(string $hash, array $requiredFileIds = [], bool $withPartner = false): ApworldPreflight
     {
         $body = [] !== $requiredFileIds ? ['requiredFileIds' => $requiredFileIds] : [];
+        if ($withPartner) {
+            $body['withPartner'] = true;
+        }
 
         return $this->preflightFromResponse($this->transport->postJson("/apworlds/{$hash}/preflight", $body));
     }
