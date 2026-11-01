@@ -588,6 +588,12 @@ final class ApworldsClientTest extends TestCase
         $this->assertFalse(ApworldPreflight::fromArray(['status' => 'passed'])->withPartner);
     }
 
+    public function testThePreflightSaysSinceWhenItIsGenerating(): void
+    {
+        $this->assertSame('2026-11-01T12:00:00Z', ApworldPreflight::fromArray(['status' => 'pending', 'startedAt' => '2026-11-01T12:00:00Z'])->startedAt);
+        $this->assertNull(ApworldPreflight::fromArray(['status' => 'pending'])->startedAt);
+    }
+
     public function testRunPreflight_anExpiredFileIsTyped(): void
     {
         $client = $this->client(new MockResponse(json_encode(['error' => 'required_file_expired']) ?: '', ['http_code' => 422]));
