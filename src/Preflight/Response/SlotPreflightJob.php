@@ -15,10 +15,15 @@ final readonly class SlotPreflightJob
     public const STATUS_PASSED = 'passed';
     public const STATUS_FAILED = 'failed';
 
+    /**
+     * @param list<SlotMeasure> $measures size and progression counts of each slot of a passed test (story 56.1);
+     *                                    empty when the orchestrator or its image does not report them
+     */
     public function __construct(
         public string $id,
         public string $status,
         public string $error = '',
+        public array $measures = [],
     ) {
     }
 
@@ -29,6 +34,7 @@ final readonly class SlotPreflightJob
             id: is_string($data['id'] ?? null) ? $data['id'] : '',
             status: is_string($data['status'] ?? null) ? $data['status'] : '',
             error: is_string($data['error'] ?? null) ? $data['error'] : '',
+            measures: SlotMeasure::listFromArray($data['measures'] ?? null),
         );
     }
 

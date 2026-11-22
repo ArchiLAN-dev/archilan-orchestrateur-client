@@ -78,4 +78,28 @@ final class PreflightClientTest extends TestCase
 
         $this->assertTrue($client->get('job-1')->isSettled());
     }
+
+    public function testGet_passedJobCarriesTheSlotMeasures(): void
+    {
+        $body = json_encode(['id' => 'job-1', 'status' => 'passed', 'measures' => [
+            ['slot' => 1, 'name' => 'Jean', 'game' => 'TUNIC', 'locations' => 302, 'ownProgression' => 88, 'hostedProgression' => 0],
+            ['name' => 'broken'],
+        ]]) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $measures = $client->get('job-1')->measures;
+
+        $this->assertCount(1, $measures);
+        $this->assertSame('Jean', $measures[0]->name);
+        $this->assertSame(302, $measures[0]->locations);
+        $this->assertSame(88, $measures[0]->ownProgression);
+    }
+
+    public function testGet_jobWithoutMeasuresHasNone(): void
+    {
+        $body = json_encode(['id' => 'job-1', 'status' => 'passed']) ?: '';
+        $client = $this->client(new MockResponse($body, ['http_code' => 200]));
+
+        $this->assertSame([], $client->get('job-1')->measures);
+    }
 }
